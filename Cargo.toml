@@ -1,0 +1,14 @@
+[package]
+name = "rendezvous-coach"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+thiserror = "*"
+error-stack = "*"
+owo-colors = "*"
+tracing = "*"
+tracing-error = "*"
+tracing-log = "*"
+tracing-subscriber = { version = "*", features = ["env-filter"] }
+tts = "0.26.3"
