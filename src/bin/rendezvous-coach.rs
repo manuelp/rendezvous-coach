@@ -2,7 +2,6 @@ use chrono::{TimeDelta, prelude::*};
 use clap::Parser;
 use error_stack::{Report, ResultExt};
 use rendezvous_coach::error::{AppError, AppResult};
-use rendezvous_coach::feature::tts::{Speaker, TTSSpeaker};
 use rendezvous_coach::init;
 use rendezvous_coach::plan::Plan;
 

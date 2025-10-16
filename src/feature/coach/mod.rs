@@ -2,6 +2,8 @@ use error_stack::{Report, ResultExt};
 use tracing::info;
 use tts::Tts;
 
+pub mod lexicon;
+
 #[derive(Debug, thiserror::Error)]
 #[error("TTS error")]
 pub struct SpeakerError;
