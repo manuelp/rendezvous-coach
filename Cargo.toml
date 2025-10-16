@@ -4,12 +4,13 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-thiserror = "*"
-error-stack = "*"
-owo-colors = "*"
-tracing = "*"
-tracing-error = "*"
-tracing-log = "*"
-tracing-subscriber = { version = "*", features = ["env-filter"] }
+thiserror = "2.0.17"
+error-stack = "0.6.0"
+owo-colors = "4.2.3"
+tracing = "0.1.41"
+tracing-error = "0.2.1"
+tracing-log = "0.2.0"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 tts = "0.26.3"
 chrono = "0.4.42"
+clap = "4.5.49"
