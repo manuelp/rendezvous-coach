@@ -4,6 +4,7 @@ use error_stack::{Report, ResultExt};
 use rendezvous_coach::error::{AppError, AppResult};
 use rendezvous_coach::init;
 use rendezvous_coach::plan::Plan;
+use rendezvous_coach::feature::coach::{self, Speaker, TTSSpeaker};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -25,7 +26,12 @@ fn main() -> AppResult<()> {
         rendezvous_time: parse_today_time(&cli.rendezvous)?,
         trip_duration: parse_time_delta(&cli.trip)?,
     };
-    dbg!(&plan);
+
+    let remaining_time = plan.departure_time() - Local::now();
+    let message = coach::lexicon::remaining_time_message(remaining_time);
+    println!("{message}");
+    let mut speaker = TTSSpeaker::new().change_context(AppError)?;
+    speaker.speak(&message).change_context(AppError)?;
 
     Ok(())
 }

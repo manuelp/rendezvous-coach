@@ -7,7 +7,7 @@ pub struct Plan {
 }
 
 impl Plan {
-    fn departure_time(&self) -> DateTime<Local> {
+    pub fn departure_time(&self) -> DateTime<Local> {
         self.rendezvous_time - self.trip_duration
     }
 }
