@@ -13,4 +13,4 @@ tracing-log = "0.2.0"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 tts = "0.26.3"
 chrono = "0.4.42"
-clap = "4.5.49"
+clap = { version = "4.5.49", features = ["derive"] }

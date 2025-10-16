@@ -5,6 +5,7 @@ pub struct Plan {
     pub rendezvous_time: DateTime<Local>,
     pub trip_duration: TimeDelta,
 }
+
 impl Plan {
     fn departure_time(&self) -> DateTime<Local> {
         self.rendezvous_time - self.trip_duration
