@@ -1,14 +1,16 @@
-use chrono::{TimeDelta, prelude::*};
+use chrono::{prelude::*, TimeDelta};
+
+use crate::time::TimeSpan;
 
 #[derive(Debug)]
 pub struct Plan {
     pub rendezvous_time: DateTime<Local>,
-    pub trip_duration: TimeDelta,
+    pub trip_duration: TimeSpan,
 }
 
 impl Plan {
     pub fn departure_time(&self) -> DateTime<Local> {
-        self.rendezvous_time - self.trip_duration
+        self.rendezvous_time - TimeDelta::from(&self.trip_duration)
     }
 }
 
@@ -20,7 +22,7 @@ mod tests {
     fn departure_time() {
         let plan = Plan {
             rendezvous_time: Local.with_ymd_and_hms(2025, 10, 15, 13, 00, 00).unwrap(),
-            trip_duration: TimeDelta::minutes(20),
+            trip_duration: TimeSpan::new(0, 20, 0),
         };
 
         let departure_time = plan.departure_time();

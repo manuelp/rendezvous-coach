@@ -1,99 +1,137 @@
+use std::ops::{Add, Sub};
+
 use chrono::{TimeDelta, prelude::*};
 
-pub fn time_to_duration(time: NaiveTime) -> TimeDelta {
-    time.signed_duration_since(NaiveTime::MIN)
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct TimeSpan(u64);
+
+impl From<TimeSpan> for TimeDelta {
+    fn from(value: TimeSpan) -> Self {
+        TimeDelta::seconds(value.0 as i64)
+    }
 }
 
-pub fn time_delta_seconds(delta: &TimeDelta) -> i64 {
-    delta.num_seconds() % 60
+impl From<TimeDelta> for TimeSpan {
+    fn from(value: TimeDelta) -> Self {
+        Self(value.abs().num_seconds() as u64)
+    }
 }
 
-pub fn time_delta_minutes(delta: &TimeDelta) -> i64 {
-    (delta.num_seconds() % 3600) / 60
+impl From<&TimeSpan> for TimeDelta {
+    fn from(value: &TimeSpan) -> TimeDelta {
+        TimeDelta::seconds(value.0 as i64)
+    }
 }
 
-pub fn time_delta_hours(delta: &TimeDelta) -> i64 {
-    delta.num_seconds() / 3600
+impl From<NaiveTime> for TimeSpan {
+    fn from(value: NaiveTime) -> Self {
+        value.signed_duration_since(NaiveTime::MIN).into()
+    }
 }
 
-pub fn time_delta_clamp_seconds(delta: TimeDelta) -> TimeDelta {
-    TimeDelta::seconds(delta.num_seconds())
+impl TimeSpan {
+    pub const ZERO: Self = Self(0);
+
+    pub fn new(hours: u8, minutes: u8, seconds: u8) -> Self {
+        Self(seconds as u64 + (minutes as u64 * 60) + (hours as u64 * 60 * 60))
+    }
+
+    pub fn is_zero(&self) -> bool {
+        self == &TimeSpan::ZERO
+    }
+
+    pub fn seconds(&self) -> u64 {
+        self.0 % 60
+    }
+
+    pub fn minutes(&self) -> u64 {
+        (self.0 % 3600) / 60
+    }
+
+    pub fn hours(&self) -> u64 {
+        self.0 / 3600
+    }
+}
+
+impl Add<Self> for TimeSpan {
+    type Output = TimeSpan;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        TimeSpan(self.0 + rhs.0)
+    }
+}
+
+impl Sub for TimeSpan {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self::Output {
+        TimeSpan(self.0 - rhs.0)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    // TODO negative time/delta
+    // TODO is_zero
+
     #[test]
-    fn can_convert_naive_time_to_time_delta() {
-        let naive_time = NaiveTime::from_hms_opt(2, 45, 00).unwrap();
+    fn can_convert_naive_time_to_time_span() {
+        let naive_time = NaiveTime::from_hms_opt(2, 45, 0).unwrap();
 
-        let delta: TimeDelta = time_to_duration(naive_time);
+        let actual: TimeSpan = naive_time.into();
 
-        let expected_delta = TimeDelta::hours(2) + TimeDelta::minutes(45);
-        assert_eq!(expected_delta, delta);
+        let expected = TimeSpan::new(2, 45, 0);
+        assert_eq!(expected, actual);
     }
 
     #[test]
-    fn time_delta_seconds_component_5s() {
-        let input = TimeDelta::seconds(5);
+    fn can_convert_time_delta_to_time_span() {
+        let delta = TimeDelta::hours(1) + TimeDelta::minutes(59) + TimeDelta::seconds(59);
 
-        let seconds = time_delta_seconds(&input);
+        let actual: TimeSpan = delta.into();
 
-        assert_eq!(5, seconds);
+        let expected = TimeSpan::new(1, 59, 59);
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn time_span_seconds_component_5s() {
+        let time_span = TimeSpan::new(0, 0, 5);
+
+        assert_eq!(5, time_span.seconds());
     }
 
     #[test]
     fn time_delta_seconds_component_1m_12s() {
-        let input = TimeDelta::minutes(1) + TimeDelta::seconds(12);
-
-        let seconds = time_delta_seconds(&input);
-
-        assert_eq!(12, seconds);
+        let time_span = TimeSpan::new(0, 1, 12);
+        assert_eq!(12, time_span.seconds());
     }
 
     #[test]
     fn time_delta_minutes_component_5s() {
-        let input = TimeDelta::seconds(5);
+        let time_span = TimeSpan::new(0, 0, 5);
 
-        let minutes = time_delta_minutes(&input);
-
-        assert_eq!(0, minutes);
+        assert_eq!(0, time_span.minutes());
     }
 
     #[test]
     fn time_delta_minutes_component_2m_35s() {
-        let input = TimeDelta::minutes(2) + TimeDelta::seconds(35);
-
-        let minutes = time_delta_minutes(&input);
-
-        assert_eq!(2, minutes);
+        let time_span = TimeSpan::new(0, 2, 35);
+        assert_eq!(2, time_span.minutes());
     }
 
     #[test]
     fn time_delta_hours_component_59m_59s() {
-        let input = TimeDelta::minutes(59) + TimeDelta::seconds(59);
-
-        let hours = time_delta_hours(&input);
-
-        assert_eq!(0, hours);
+        let time_span = TimeSpan::new(0, 59, 59);
+        assert_eq!(0, time_span.hours());
     }
 
     #[test]
     fn time_delta_hours_component_1h_59m_59s() {
-        let input = TimeDelta::hours(1) + TimeDelta::minutes(59) + TimeDelta::seconds(59);
+        let time_span = TimeSpan::new(1, 59, 59);
 
-        let hours = time_delta_hours(&input);
-
-        assert_eq!(1, hours);
-    }
-
-    #[test]
-    fn time_delta_clamp_seconds_should_remove_sub_second_fields() {
-        let delta = TimeDelta::milliseconds(12) + TimeDelta::nanoseconds(43);
-
-        let clamped = time_delta_clamp_seconds(delta);
-
-        assert!(clamped.is_zero());
+        assert_eq!(1, time_span.hours());
     }
 }

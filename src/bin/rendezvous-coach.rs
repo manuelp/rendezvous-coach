@@ -25,7 +25,7 @@ fn main() -> AppResult<()> {
     let cli = Cli::parse();
     let plan = Plan {
         rendezvous_time: parse_today_time(&cli.rendezvous)?,
-        trip_duration: parse_time_delta(&cli.trip)?,
+        trip_duration: parse_time_span(&cli.trip)?,
     };
 
     let mut speaker = TTSSpeaker::new().change_context(AppError)?;
@@ -48,22 +48,22 @@ fn main() -> AppResult<()> {
 
 fn check_time(plan: &Plan, speaker: &mut impl Speaker) -> AppResult<Option<TimeDelta>> {
     let now = Local::now();
-    let remaining_time = time_delta_clamp_seconds(plan.departure_time() - now);
+    let remaining_time: TimeSpan = (plan.departure_time() - now).into();
 
-    if remaining_time.abs().is_zero() {
+    if remaining_time.is_zero() {
         time_to_go(&plan, &now, speaker)?;
         Ok(None)
-    } else if remaining_time <= TimeDelta::minutes(1) {
+    } else if remaining_time <= TimeSpan::new(0, 1, 0) {
         report_time(&plan, &now, &remaining_time, speaker)?;
-        let next_delay = TimeDelta::seconds(time_delta_seconds(&remaining_time));
+        let next_delay = TimeDelta::seconds(remaining_time.seconds() as i64);
         Ok(Some(next_delay))
-    } else if remaining_time <= TimeDelta::minutes(5) {
+    } else if remaining_time <= TimeSpan::new(0, 5, 0) {
         report_time(&plan, &now, &remaining_time, speaker)?;
         Ok(Some(TimeDelta::minutes(1)))
-    } else if remaining_time < TimeDelta::minutes(15) {
+    } else if remaining_time < TimeSpan::new(0, 15, 0) {
         report_time(&plan, &now, &remaining_time, speaker)?;
         Ok(Some(TimeDelta::minutes(5)))
-    } else if remaining_time < TimeDelta::hours(1) {
+    } else if remaining_time < TimeSpan::new(1, 0, 0) {
         report_time(&plan, &now, &remaining_time, speaker)?;
         Ok(Some(TimeDelta::minutes(15)))
     } else {
@@ -74,7 +74,7 @@ fn check_time(plan: &Plan, speaker: &mut impl Speaker) -> AppResult<Option<TimeD
 fn report_time(
     plan: &Plan,
     now: &DateTime<Local>,
-    remaining_time: &TimeDelta,
+    remaining_time: &TimeSpan,
     speaker: &mut impl Speaker,
 ) -> AppResult<()> {
     let message = coach::lexicon::remaining_time_message(remaining_time);
@@ -101,8 +101,8 @@ fn parse_time(input: &str) -> AppResult<NaiveTime> {
         .attach("invalid time")
 }
 
-fn parse_time_delta(arg: &str) -> AppResult<TimeDelta> {
-    parse_time(arg).map(time_to_duration)
+fn parse_time_span(arg: &str) -> AppResult<TimeSpan> {
+    parse_time(arg).map(|nt| nt.into())
 }
 
 fn parse_today_time(input: &str) -> AppResult<DateTime<Local>> {
@@ -134,16 +134,16 @@ mod tests {
     }
 
     #[test]
-    fn parse_time_delta_should_parse_correctly_formatted_string() {
-        let parsed = parse_time_delta("01:30").unwrap();
+    fn parse_time_span_should_parse_correctly_formatted_string() {
+        let parsed = parse_time_span("01:30").unwrap();
 
-        let expected = TimeDelta::hours(1) + TimeDelta::minutes(30);
+        let expected = TimeSpan::new(1, 30, 0);
         assert_eq!(expected, parsed);
     }
 
     #[test]
     fn parse_time_delta_should_note_parse_incorrectly_formatted_string() {
-        let parsed = parse_time_delta("0130");
+        let parsed = parse_time_span("0130");
         assert!(parsed.is_err())
     }
 

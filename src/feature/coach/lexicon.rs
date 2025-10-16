@@ -1,8 +1,6 @@
-use chrono::TimeDelta;
-
 use crate::time::*;
 
-fn remaining_time_component(component: i64, singular: &str, plural: &str) -> Option<String> {
+fn remaining_time_component(component: u64, singular: &str, plural: &str) -> Option<String> {
     match component {
         1 => Some(format!("{component} {singular}")),
         n if n > 1 => Some(format!("{component} {plural}")),
@@ -10,10 +8,10 @@ fn remaining_time_component(component: i64, singular: &str, plural: &str) -> Opt
     }
 }
 
-pub fn remaining_time_message(remaining_time: &TimeDelta) -> String {
-    let seconds = time_delta_seconds(remaining_time);
-    let minutes = time_delta_minutes(remaining_time);
-    let hours = time_delta_hours(remaining_time);
+pub fn remaining_time_message(remaining_time: &TimeSpan) -> String {
+    let seconds = remaining_time.seconds();
+    let minutes = remaining_time.minutes();
+    let hours = remaining_time.hours();
     let components = vec![
         remaining_time_component(hours, "ora", "ore"),
         remaining_time_component(minutes, "minuto", "minuti"),
@@ -38,65 +36,57 @@ pub fn remaining_time_message(remaining_time: &TimeDelta) -> String {
 
 #[cfg(test)]
 mod tests {
-    use chrono::TimeDelta;
-
     use super::*;
 
-    fn assert_message(remaining_time: TimeDelta, expected_message: &str) {
+    fn assert_message(remaining_time: TimeSpan, expected_message: &str) {
         let message = remaining_time_message(&remaining_time);
         assert_eq!(expected_message, message);
     }
 
     #[test]
     fn remaining_time_message_should_format_message_it_1s() {
-        assert_message(TimeDelta::seconds(1), "Manca 1 secondo");
+        assert_message(TimeSpan::new(0, 0, 1), "Manca 1 secondo");
     }
 
     #[test]
     fn remaining_time_message_should_format_message_it_10s() {
-        assert_message(TimeDelta::seconds(10), "Mancano 10 secondi");
+        assert_message(TimeSpan::new(0, 0, 10), "Mancano 10 secondi");
     }
 
     #[test]
     fn remaining_time_message_should_format_message_it_1m() {
-        assert_message(TimeDelta::minutes(1), "Manca 1 minuto");
+        assert_message(TimeSpan::new(0, 1, 0), "Manca 1 minuto");
     }
 
     #[test]
     fn remaining_time_message_should_format_message_it_12m() {
-        assert_message(TimeDelta::minutes(12), "Mancano 12 minuti");
+        assert_message(TimeSpan::new(0, 12, 0), "Mancano 12 minuti");
     }
 
     #[test]
     fn remaining_time_message_should_format_message_it_1h() {
-        assert_message(TimeDelta::hours(1), "Manca 1 ora");
+        assert_message(TimeSpan::new(1, 0, 0), "Manca 1 ora");
     }
 
     #[test]
     fn remaining_time_message_should_format_message_it_2h() {
-        assert_message(TimeDelta::hours(2), "Mancano 2 ore");
+        assert_message(TimeSpan::new(2, 0, 0), "Mancano 2 ore");
     }
 
     #[test]
     fn remaining_time_message_should_format_message_it_1h_12m() {
-        assert_message(
-            TimeDelta::hours(1) + TimeDelta::minutes(12),
-            "Mancano 1 ora e 12 minuti",
-        );
+        assert_message(TimeSpan::new(1, 12, 0), "Mancano 1 ora e 12 minuti");
     }
 
     #[test]
     fn remaining_time_message_should_format_message_it_5m_30m() {
-        assert_message(
-            TimeDelta::minutes(5) + TimeDelta::seconds(30),
-            "Mancano 5 minuti e 30 secondi",
-        );
+        assert_message(TimeSpan::new(0, 5, 30), "Mancano 5 minuti e 30 secondi");
     }
 
     #[test]
     fn remaining_time_message_should_format_message_it_1h_20m_30m() {
         assert_message(
-            TimeDelta::hours(1) + TimeDelta::minutes(20) + TimeDelta::seconds(30),
+            TimeSpan::new(1, 20, 30),
             "Mancano 1 ora, 20 minuti e 30 secondi",
         );
     }
