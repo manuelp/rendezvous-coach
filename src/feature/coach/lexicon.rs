@@ -1,5 +1,7 @@
 use chrono::TimeDelta;
 
+use crate::time::*;
+
 fn remaining_time_component(component: i64, singular: &str, plural: &str) -> Option<String> {
     match component {
         1 => Some(format!("{component} {singular}")),
@@ -8,10 +10,10 @@ fn remaining_time_component(component: i64, singular: &str, plural: &str) -> Opt
     }
 }
 
-pub fn remaining_time_message(remaining_time: TimeDelta) -> String {
-    let seconds = remaining_time.num_seconds() % 60;
-    let minutes = (remaining_time.num_seconds() % 3600) / 60;
-    let hours = remaining_time.num_seconds() / 3600;
+pub fn remaining_time_message(remaining_time: &TimeDelta) -> String {
+    let seconds = time_delta_seconds(remaining_time);
+    let minutes = time_delta_minutes(remaining_time);
+    let hours = time_delta_hours(remaining_time);
     let components = vec![
         remaining_time_component(hours, "ora", "ore"),
         remaining_time_component(minutes, "minuto", "minuti"),
@@ -41,7 +43,7 @@ mod tests {
     use super::*;
 
     fn assert_message(remaining_time: TimeDelta, expected_message: &str) {
-        let message = remaining_time_message(remaining_time);
+        let message = remaining_time_message(&remaining_time);
         assert_eq!(expected_message, message);
     }
 
