@@ -73,9 +73,6 @@ impl Sub for TimeSpan {
 mod tests {
     use super::*;
 
-    // TODO negative time/delta
-    // TODO is_zero
-
     #[test]
     fn can_convert_naive_time_to_time_span() {
         let naive_time = NaiveTime::from_hms_opt(2, 45, 0).unwrap();
@@ -94,6 +91,25 @@ mod tests {
 
         let expected = TimeSpan::new(1, 59, 59);
         assert_eq!(expected, actual);
+    }
+
+      #[test]
+    fn can_convert_negative_time_delta_to_time_span() {
+        let delta = TimeDelta::hours(-1) + TimeDelta::minutes(-59) + TimeDelta::seconds(-59);
+
+        let actual: TimeSpan = delta.into();
+
+        let expected = TimeSpan::new(1, 59, 59);
+        assert_eq!(expected, actual);
+    }
+
+
+    #[test]
+    fn time_span_is_zero() {
+        let time_span = TimeSpan::new(0, 0, 0);
+
+        assert!(time_span.is_zero());
+        assert_eq!(TimeSpan::ZERO, time_span);
     }
 
     #[test]
