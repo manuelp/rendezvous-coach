@@ -1,6 +1,8 @@
 use chrono::{TimeDelta, prelude::*};
 use clap::Parser;
 use error_stack::{Report, ResultExt};
+use owo_colors::colors::css::Gray;
+use owo_colors::OwoColorize;
 use rendezvous_coach::error::{AppError, AppResult};
 use rendezvous_coach::feature::coach::{self, Speaker, TTSSpeaker, lexicon};
 use rendezvous_coach::init;
@@ -37,6 +39,7 @@ fn main() -> AppResult<()> {
         match last_check {
             Some(last) if last == now => (), // Check at most one time every second
             _ => {
+                println!("--------------------------------");
                 last_check = Some(now);
                 match check_time(&plan, now, &mut speaker)? {
                     Some(delay) => {
@@ -44,10 +47,8 @@ fn main() -> AppResult<()> {
                             .to_std()
                             .change_context(AppError)
                             .attach("invalid time check delay")?;
-                        println!(
-                            "\tProssimo avviso ➡️ {}",
-                            lexicon::remaining_time_message(&TimeSpan::from(std_delay))
-                        );
+                        let msg = lexicon::remaining_time_message(&TimeSpan::from(std_delay));
+                        println!("\tProssimo avviso ➡️ {}", msg.fg::<Gray>().underline());
                         std::thread::sleep(std_delay);
                     }
                     None => break,
@@ -130,14 +131,13 @@ fn report_time(
 fn time_to_go(plan: &Plan, now: &DateTime<Local>, speaker: &mut impl Speaker) -> AppResult<()> {
     let message = "Ora di partire!";
     print_console_message(&message, now, plan);
-    speaker.speak(message).change_context(AppError)
+    speaker.speak(&message).change_context(AppError)
 }
 
 fn print_console_message(message: &str, now: &DateTime<Local>, plan: &Plan) {
     println!("Ora: {}", now.to_rfc3339());
     println!("Partenza: {}", plan.departure_time().to_rfc3339());
-    println!("📨 {message}");
-    println!("--------------------------------");
+    println!("📨 {}", message.bright_red());
 }
 
 fn parse_time(input: &str) -> AppResult<NaiveTime> {
