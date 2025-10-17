@@ -22,6 +22,8 @@ fn main() -> AppResult<()> {
     init::error_reporting();
     init::tracing();
 
+    let mut last_check: Option<DateTime<Local>> = None;
+
     let cli = Cli::parse();
     let plan = Plan {
         rendezvous_time: parse_today_time(&cli.rendezvous)?,
@@ -32,23 +34,45 @@ fn main() -> AppResult<()> {
 
     loop {
         let now = now().change_context(AppError)?;
-        match check_time(&plan, now, &mut speaker)? {
-            Some(delay) => {
-                let std_delay = delay
-                    .to_std()
-                    .change_context(AppError)
-                    .attach("invalid time check delay")?;
-                println!(
-                    "\tAttesa ➡️ {}",
-                    lexicon::remaining_time_message(&TimeSpan::from(std_delay))
-                );
-                std::thread::sleep(std_delay);
+        match last_check {
+            Some(last) if last == now => (), // Check at most one time every second
+            _ => {
+                last_check = Some(now);
+                match check_time(&plan, now, &mut speaker)? {
+                    Some(delay) => {
+                        let std_delay = delay
+                            .to_std()
+                            .change_context(AppError)
+                            .attach("invalid time check delay")?;
+                        println!(
+                            "\tProssimo avviso ➡️ {}",
+                            lexicon::remaining_time_message(&TimeSpan::from(std_delay))
+                        );
+                        std::thread::sleep(std_delay);
+                    }
+                    None => break,
+                }
             }
-            None => break,
         }
     }
 
     Ok(())
+}
+
+fn next_delay_every(remaining_time: TimeSpan, minutes: u64) -> AppResult<Option<TimeDelta>> {
+    let next_delay_seconds = TimeDelta::seconds(remaining_time.seconds() as i64);
+    let next_delay_minutes = TimeDelta::minutes(
+        Some(remaining_time.minutes())
+            .map(|m| (m % minutes) as i64)
+            .unwrap_or(minutes as i64),
+    );
+    let next_delay = next_delay_minutes + next_delay_seconds;
+
+    if next_delay.is_zero() {
+        Ok(Some(TimeDelta::minutes(minutes as i64)))
+    } else {
+        Ok(Some(next_delay))
+    }
 }
 
 fn check_time(
@@ -61,7 +85,7 @@ fn check_time(
     if remaining_time.is_zero() {
         time_to_go(&plan, &now, speaker)?;
         Ok(None)
-    } else if remaining_time <= TimeSpan::new(0, 1, 0) {
+    } else if remaining_time == TimeSpan::new(0, 1, 0) {
         report_time(&plan, &now, &remaining_time, speaker)?;
         let next_delay = TimeDelta::from(remaining_time);
         Ok(Some(next_delay))
@@ -74,52 +98,21 @@ fn check_time(
             TimeDelta::minutes(1)
         };
         Ok(Some(next_delay))
+    } else if remaining_time == TimeSpan::new(0, 15, 0) {
+        report_time(&plan, &now, &remaining_time, speaker)?;
+        Ok(Some(TimeDelta::minutes(5)))
     } else if remaining_time <= TimeSpan::new(0, 15, 0) {
         report_time(&plan, &now, &remaining_time, speaker)?;
-
-        let next_delay_seconds = TimeDelta::seconds(remaining_time.seconds() as i64);
-        let next_delay_minutes = TimeDelta::minutes(
-            Some(remaining_time.minutes())
-                .map(|m| (m % 5) as i64)
-                .unwrap_or(5),
-        );
-
-        dbg!(TimeSpan::from(next_delay_seconds));
-        dbg!(&remaining_time);
-        dbg!(remaining_time.minutes() % 5);
-        dbg!(TimeSpan::from(next_delay_minutes));
-
-        let next_delay = next_delay_minutes + next_delay_seconds;
-
-        Ok(Some(next_delay))
+        next_delay_every(remaining_time, 5)
+    } else if remaining_time == TimeSpan::new(1, 0, 0) {
+        report_time(&plan, &now, &remaining_time, speaker)?;
+        Ok(Some(TimeDelta::minutes(15)))
     } else if remaining_time <= TimeSpan::new(1, 0, 0) {
         report_time(&plan, &now, &remaining_time, speaker)?;
-
-        // ---
-        let next_delay_seconds = TimeDelta::seconds(remaining_time.seconds() as i64);
-        let next_delay_minutes = TimeDelta::minutes(
-            Some(remaining_time.minutes())
-                .map(|m| (m % 15) as i64)
-                .unwrap_or(15),
-        );
-        let next_delay = next_delay_minutes + next_delay_seconds;
-        // ---
-
-        Ok(Some(next_delay))
+        next_delay_every(remaining_time, 15)
     } else {
         report_time(&plan, &now, &remaining_time, speaker)?;
-
-        // ---
-        let next_delay_seconds = TimeDelta::seconds(remaining_time.seconds() as i64);
-        let next_delay_minutes = TimeDelta::minutes(
-            Some(remaining_time.minutes())
-                .map(|m| (m % 30) as i64)
-                .unwrap_or(30),
-        );
-        let next_delay = next_delay_minutes + next_delay_seconds;
-        // ---
-
-        Ok(Some(next_delay))
+        next_delay_every(remaining_time, 30)
     }
 }
 
@@ -143,7 +136,7 @@ fn time_to_go(plan: &Plan, now: &DateTime<Local>, speaker: &mut impl Speaker) ->
 fn print_console_message(message: &str, now: &DateTime<Local>, plan: &Plan) {
     println!("Ora: {}", now.to_rfc3339());
     println!("Partenza: {}", plan.departure_time().to_rfc3339());
-    println!("-> {message}");
+    println!("📨 {message}");
     println!("--------------------------------");
 }
 
@@ -279,7 +272,7 @@ mod tests {
 
     #[test]
     fn check_time_10m() {
-        assert_check_time("00:10:00", Some("00:00:00"));
+        assert_check_time("00:10:00", Some("00:05:00"));
     }
 
     #[test]
@@ -305,6 +298,11 @@ mod tests {
     #[test]
     fn check_time_48m_00s() {
         assert_check_time("00:48:00", Some("00:03:00"));
+    }
+
+    #[test]
+    fn check_time_1h() {
+        assert_check_time("01:00:00", Some("00:15:00"));
     }
 
     #[test]
