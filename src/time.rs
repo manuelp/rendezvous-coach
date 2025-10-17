@@ -1,6 +1,13 @@
 use std::ops::{Add, Sub};
 
 use chrono::{TimeDelta, prelude::*};
+use error_stack::{Report, ResultExt};
+
+#[derive(Debug, thiserror::Error)]
+#[error("time error")]
+pub struct TimeError;
+
+pub type TimeResult<T> = Result<T, Report<TimeError>>;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TimeSpan(u64);
@@ -69,9 +76,28 @@ impl Sub for TimeSpan {
     }
 }
 
+pub fn normalize(timestamp: DateTime<Local>) -> TimeResult<DateTime<Local>> {
+    timestamp.with_nanosecond(0).ok_or(Report::new(TimeError)).attach("invalid timestamp")
+}
+
+pub fn now() -> TimeResult<DateTime<Local>> {
+    normalize(Local::now())
+}
+
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
+
+    #[test]
+    fn normalize_should_remove_nanoseconds() {
+        let timestamp = DateTime::from_str("2025-10-16T23:21:18.612202576+02:00").unwrap();
+
+        let normalized = normalize(timestamp).unwrap();
+        
+        assert_eq!("2025-10-16T23:21:18+02:00", normalized.to_rfc3339());
+    }
 
     #[test]
     fn can_convert_naive_time_to_time_span() {

@@ -37,6 +37,7 @@ fn main() -> AppResult<()> {
                     .to_std()
                     .change_context(AppError)
                     .attach("invalid time check delay")?;
+                println!("\tWaiting: {std_delay:?}");
                 std::thread::sleep(std_delay);
             }
             None => break,
@@ -47,23 +48,31 @@ fn main() -> AppResult<()> {
 }
 
 fn check_time(plan: &Plan, speaker: &mut impl Speaker) -> AppResult<Option<TimeDelta>> {
-    let now = Local::now();
+    let now = now().change_context(AppError)?;
     let remaining_time: TimeSpan = (plan.departure_time() - now).into();
 
+    // First, wait off seconds to get to whole minute time
+    let off_seconds = remaining_time.seconds() as i64;
+    if off_seconds > 0 {
+        report_time(&plan, &now, &remaining_time, speaker)?;
+        return Ok(Some(TimeDelta::seconds(off_seconds)))
+    }
+
+    // Then go for regular checks
     if remaining_time.is_zero() {
         time_to_go(&plan, &now, speaker)?;
         Ok(None)
     } else if remaining_time <= TimeSpan::new(0, 1, 0) {
         report_time(&plan, &now, &remaining_time, speaker)?;
-        let next_delay = TimeDelta::seconds(remaining_time.seconds() as i64);
+        let next_delay = TimeDelta::from(remaining_time);
         Ok(Some(next_delay))
     } else if remaining_time <= TimeSpan::new(0, 5, 0) {
         report_time(&plan, &now, &remaining_time, speaker)?;
         Ok(Some(TimeDelta::minutes(1)))
-    } else if remaining_time < TimeSpan::new(0, 15, 0) {
+    } else if remaining_time <= TimeSpan::new(0, 15, 0) {
         report_time(&plan, &now, &remaining_time, speaker)?;
         Ok(Some(TimeDelta::minutes(5)))
-    } else if remaining_time < TimeSpan::new(1, 0, 0) {
+    } else if remaining_time <= TimeSpan::new(1, 0, 0) {
         report_time(&plan, &now, &remaining_time, speaker)?;
         Ok(Some(TimeDelta::minutes(15)))
     } else {
@@ -107,8 +116,8 @@ fn parse_time_span(arg: &str) -> AppResult<TimeSpan> {
 
 fn parse_today_time(input: &str) -> AppResult<DateTime<Local>> {
     let time = parse_time(input)?;
-    Local::now()
-        .with_time(time)
+    let now = now().change_context(AppError)?;
+    now.with_time(time)
         .single()
         .ok_or(Report::new(AppError))
         .attach("invalid time for the current date")
