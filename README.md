@@ -1,6 +1,8 @@
 # rendezvous-coach
 This program uses TTS through the [tts](https://docs.rs/tts/latest/tts/index.html) crate.
 
+> There is an easier and cleaner way to implement this program, however for now it works as intended.
+
 ## Install
 ### TTS software
 To use this in Linux, you need to install:
