@@ -2,6 +2,7 @@
 This program uses TTS through the [tts](https://docs.rs/tts/latest/tts/index.html) crate.
 
 ## Install
+### TTS software
 To use this in Linux, you need to install:
 
 - [speech-dispatcher](https://wiki.archlinux.org/title/Speech_dispatcher): speech synthesis layer
@@ -54,3 +55,24 @@ If everything works, you should be able to test the TTS capability of your syste
 ```bash
 spd-say "Ciao!"
 ```
+
+### This program
+`./install.sh`
+
+The binary will be compiled with release target and copied into `$HOME/bin` folder. That folder needs to exists and it should be in PATH (`$HOME/.bashrc` should contain the line: `export PATH="$HOME/bin:$PATH"`).
+
+## Usage
+Run `rendezvous-coach --help` to see the available options.
+
+For example:
+
+```
+rendenzvous-coach -r 20:00 -t 00:15
+```
+
+Will start it taking into account:
+
+- Rendezvous time: today at 20:00 (local time)
+- Travel time: 15 minutes
+
+Then a message with the remaining time will be printed and spoken using the TTS system with an increasing frequency as the departure time approaches.
