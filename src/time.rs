@@ -1,4 +1,5 @@
 use std::ops::{Add, Sub};
+use std::fmt::Debug;
 
 use chrono::{TimeDelta, prelude::*};
 use error_stack::{Report, ResultExt};
@@ -9,8 +10,21 @@ pub struct TimeError;
 
 pub type TimeResult<T> = Result<T, Report<TimeError>>;
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 pub struct TimeSpan(u64);
+
+impl Debug for TimeSpan {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let nt = NaiveTime::from_num_seconds_from_midnight_opt(self.0 as u32, 0).unwrap();
+        write!(f, "{}", nt.format("%H:%M:%S"))
+    }
+}
+
+impl From<std::time::Duration> for TimeSpan {
+    fn from(value: std::time::Duration) -> Self {
+        Self(value.as_secs())
+    }
+}
 
 impl From<TimeSpan> for TimeDelta {
     fn from(value: TimeSpan) -> Self {

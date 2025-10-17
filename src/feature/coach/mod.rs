@@ -8,7 +8,7 @@ pub mod lexicon;
 #[error("TTS error")]
 pub struct SpeakerError;
 
-type SpeakerResult<T> = Result<T, Report<SpeakerError>>;
+pub type SpeakerResult<T> = Result<T, Report<SpeakerError>>;
 
 pub trait Speaker {
     fn speak(&mut self, content: &str) -> SpeakerResult<()>;
