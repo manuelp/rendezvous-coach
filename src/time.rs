@@ -14,7 +14,7 @@ pub type TimeResult<T> = Result<T, Report<TimeError>>;
 
 // ---------------------- Time span
 
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub struct TimeSpan(u64);
 
 impl Debug for TimeSpan {
@@ -99,7 +99,7 @@ impl TimeSpan {
 }
 
 // ---------------------- Time
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub struct Time(NaiveTime);
 
 impl Debug for Time {
@@ -148,19 +148,11 @@ impl Display for Timestamp {
     }
 }
 
-impl Sub<&TimeSpan> for &Timestamp {
-    type Output = Timestamp;
-
-    fn sub(self, rhs: &TimeSpan) -> Self::Output {
-        Timestamp(self.0 - TimeDelta::seconds(rhs.0 as i64))
-    }
-}
-
 impl Sub<TimeSpan> for Timestamp {
     type Output = Timestamp;
 
     fn sub(self, rhs: TimeSpan) -> Self::Output {
-        &self - &rhs
+        Timestamp(self.0 - TimeDelta::seconds(rhs.0 as i64))
     }
 }
 
@@ -464,7 +456,7 @@ mod tests {
         let original = Timestamp::new(2025, 10, 18, 15, 30, 11).unwrap();
         let time_span = TimeSpan::ZERO;
 
-        let res: Timestamp = &original - &time_span;
+        let res: Timestamp = original - time_span;
 
         assert_eq!(original, res);
     }
@@ -474,7 +466,7 @@ mod tests {
         let original = Timestamp::new(2025, 10, 18, 15, 30, 11).unwrap();
         let time_span = TimeSpan::new(1, 20, 1);
 
-        let res: Timestamp = &original - &time_span;
+        let res: Timestamp = original - time_span;
 
         let expected_time = Time::new(14, 10, 10).unwrap();
         let expected = original.with_time(&expected_time).unwrap();

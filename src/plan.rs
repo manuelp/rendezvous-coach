@@ -25,7 +25,7 @@ pub struct Plan {
 
 impl Plan {
     pub fn departure_time(&self) -> Timestamp {
-        &self.rendezvous_time - &self.trip_duration
+        self.rendezvous_time - self.trip_duration
     }
 
     pub fn notifications<C: Coach>(&self, coach: C) -> PlanResult<Vec<Notification>> {
@@ -95,7 +95,7 @@ mod tests {
 
     fn notification_from(rendezvous_time: Timestamp, time_span: TimeSpan) -> Notification {
         Notification {
-            time: &rendezvous_time - &time_span,
+            time: rendezvous_time - time_span,
             message: TestCoach.remaining_time_message(&time_span),
         }
     }
