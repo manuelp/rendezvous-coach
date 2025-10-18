@@ -156,6 +156,14 @@ impl Sub<&TimeSpan> for &Timestamp {
     }
 }
 
+impl Sub<TimeSpan> for Timestamp {
+    type Output = Timestamp;
+
+    fn sub(self, rhs: TimeSpan) -> Self::Output {
+        &self - &rhs
+    }
+}
+
 impl Add<TimeSpan> for Timestamp {
     type Output = Timestamp;
 

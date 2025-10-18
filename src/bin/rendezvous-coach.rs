@@ -3,7 +3,8 @@ use error_stack::ResultExt;
 use owo_colors::OwoColorize;
 use owo_colors::colors::css::Gray;
 use rendezvous_coach::error::{AppError, AppResult};
-use rendezvous_coach::feature::coach::{self, Speaker, TTSSpeaker, lexicon};
+use rendezvous_coach::feature::coach::{Coach, DefaultItCoach};
+use rendezvous_coach::feature::tts::{Speaker, TTSSpeaker};
 use rendezvous_coach::init;
 use rendezvous_coach::plan::Plan;
 use rendezvous_coach::time::*;
@@ -31,6 +32,7 @@ fn main() -> AppResult<()> {
         trip_duration: TimeSpan::parse(&cli.trip).change_context(AppError)?,
     };
 
+    let coach = DefaultItCoach;
     let mut speaker = TTSSpeaker::new().change_context(AppError)?;
 
     loop {
@@ -40,9 +42,9 @@ fn main() -> AppResult<()> {
             _ => {
                 println!("--------------------------------");
                 last_check = Some(now);
-                match check_time(&plan, now, &mut speaker)? {
+                match check_time(&plan, now, &coach, &mut speaker)? {
                     Some(delay) => {
-                        let msg = lexicon::remaining_time_message(&delay);
+                        let msg = coach.remaining_time_message(&delay);
                         println!("\tProssimo avviso ➡️ {}", msg.fg::<Gray>().underline());
                         std::thread::sleep(delay.into());
                     }
@@ -74,18 +76,19 @@ fn next_delay_every(remaining_time: TimeSpan, minutes: u64) -> AppResult<Option<
 fn check_time(
     plan: &Plan,
     now: Timestamp,
+    coach: &impl Coach,
     speaker: &mut impl Speaker,
 ) -> AppResult<Option<TimeSpan>> {
     let remaining_time: TimeSpan = plan.departure_time().time_span_from(&now);
 
     if remaining_time.is_zero() {
-        time_to_go(&plan, &now, speaker)?;
+        time_to_go(&plan, &now, coach, speaker)?;
         Ok(None)
     } else if remaining_time == TimeSpan::new(0, 1, 0) {
-        report_time(&plan, &now, &remaining_time, speaker)?;
+        report_time(&plan, &now, &remaining_time, coach, speaker)?;
         Ok(Some(remaining_time))
     } else if remaining_time <= TimeSpan::new(0, 5, 0) {
-        report_time(&plan, &now, &remaining_time, speaker)?;
+        report_time(&plan, &now, &remaining_time, coach, speaker)?;
         let next_delay = if remaining_time.seconds() > 0 {
             // Get to the next whole minute
             TimeSpan::of_seconds(remaining_time.seconds())
@@ -94,19 +97,19 @@ fn check_time(
         };
         Ok(Some(next_delay))
     } else if remaining_time == TimeSpan::new(0, 15, 0) {
-        report_time(&plan, &now, &remaining_time, speaker)?;
+        report_time(&plan, &now, &remaining_time, coach, speaker)?;
         Ok(Some(TimeSpan::of_minutes(5)))
     } else if remaining_time <= TimeSpan::new(0, 15, 0) {
-        report_time(&plan, &now, &remaining_time, speaker)?;
+        report_time(&plan, &now, &remaining_time, coach, speaker)?;
         next_delay_every(remaining_time, 5)
     } else if remaining_time == TimeSpan::new(1, 0, 0) {
-        report_time(&plan, &now, &remaining_time, speaker)?;
+        report_time(&plan, &now, &remaining_time, coach, speaker)?;
         Ok(Some(TimeSpan::of_minutes(15)))
     } else if remaining_time <= TimeSpan::new(1, 0, 0) {
-        report_time(&plan, &now, &remaining_time, speaker)?;
+        report_time(&plan, &now, &remaining_time, coach, speaker)?;
         next_delay_every(remaining_time, 15)
     } else {
-        report_time(&plan, &now, &remaining_time, speaker)?;
+        report_time(&plan, &now, &remaining_time, coach, speaker)?;
         next_delay_every(remaining_time, 30)
     }
 }
@@ -115,15 +118,21 @@ fn report_time(
     plan: &Plan,
     now: &Timestamp,
     remaining_time: &TimeSpan,
+    coach: &impl Coach,
     speaker: &mut impl Speaker,
 ) -> AppResult<()> {
-    let message = coach::lexicon::remaining_time_message(remaining_time);
+    let message = coach.remaining_time_message(remaining_time);
     print_console_message(&message, now, plan);
     speaker.speak(&message).change_context(AppError)
 }
 
-fn time_to_go(plan: &Plan, now: &Timestamp, speaker: &mut impl Speaker) -> AppResult<()> {
-    let message = "Ora di partire!";
+fn time_to_go(
+    plan: &Plan,
+    now: &Timestamp,
+    coach: &impl Coach,
+    speaker: &mut impl Speaker,
+) -> AppResult<()> {
+    let message = coach.time_to_go();
     print_console_message(&message, now, plan);
     speaker.speak(&message).change_context(AppError)
 }
@@ -136,7 +145,7 @@ fn print_console_message(message: &str, now: &Timestamp, plan: &Plan) {
 
 #[cfg(test)]
 mod tests {
-    use rendezvous_coach::feature::coach::SpeakerResult;
+    use rendezvous_coach::feature::tts::SpeakerResult;
 
     use super::*;
 
@@ -157,7 +166,7 @@ mod tests {
             trip_duration: TimeSpan::ZERO,
         };
 
-        let actual_time_delta = check_time(&plan, now, &mut DummySpeaker).unwrap();
+        let actual_time_delta = check_time(&plan, now, &DefaultItCoach, &mut DummySpeaker).unwrap();
 
         let expected = next_time_span.map(|s| TimeSpan::parse(s).unwrap());
         assert_eq!(expected, actual_time_delta);
