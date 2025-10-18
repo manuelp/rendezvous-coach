@@ -3,6 +3,7 @@ use std::time::Duration;
 use clap::Parser;
 use error_stack::ResultExt;
 use owo_colors::OwoColorize;
+use owo_colors::colors::css::Gray;
 use rendezvous_coach::error::{AppError, AppResult};
 use rendezvous_coach::feature::coach::{Coach, DefaultItCoach};
 use rendezvous_coach::feature::tts::{Speaker, TTSSpeaker};
@@ -46,9 +47,18 @@ fn main() -> AppResult<()> {
         std::thread::sleep(Duration::from_secs(1));
 
         let now = Timestamp::now().change_context(AppError)?;
-        match notifications.pop_if(|n| n.time == now) {
-            Some(n) => report_message(&n.message, &now, &plan, &mut speaker)?,
-            None => (),
+        if let Some(n) = notifications.pop_if(|n| n.time == now) {
+            report_message(&n.message, &now, &plan, &mut speaker)?;
+
+            if let Some(next_notification) = notifications.last() {
+                let to_next = next_notification.time.time_span_from(&now);
+                let msg = format!(
+                    "\t Prossima notifica tra: {} ➡️ {}",
+                    to_next.underline(),
+                    next_notification.time
+                );
+                println!("{}", msg.fg::<Gray>());
+            }
         }
     }
 
