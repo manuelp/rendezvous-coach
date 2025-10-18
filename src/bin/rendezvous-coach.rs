@@ -73,11 +73,11 @@ fn next_delay_every(remaining_time: TimeSpan, minutes: u64) -> AppResult<Option<
     }
 }
 
-fn check_time(
+fn check_time<C: Coach, S: Speaker>(
     plan: &Plan,
     now: Timestamp,
-    coach: &impl Coach,
-    speaker: &mut impl Speaker,
+    coach: &C,
+    speaker: &mut S,
 ) -> AppResult<Option<TimeSpan>> {
     let remaining_time: TimeSpan = plan.departure_time().time_span_from(&now);
 
@@ -114,23 +114,23 @@ fn check_time(
     }
 }
 
-fn report_time(
+fn report_time<C: Coach, S: Speaker>(
     plan: &Plan,
     now: &Timestamp,
     remaining_time: &TimeSpan,
-    coach: &impl Coach,
-    speaker: &mut impl Speaker,
+    coach: &C,
+    speaker: &mut S,
 ) -> AppResult<()> {
     let message = coach.remaining_time_message(remaining_time);
     print_console_message(&message, now, plan);
     speaker.speak(&message).change_context(AppError)
 }
 
-fn time_to_go(
+fn time_to_go<C: Coach, S: Speaker>(
     plan: &Plan,
     now: &Timestamp,
-    coach: &impl Coach,
-    speaker: &mut impl Speaker,
+    coach: &C,
+    speaker: &mut S,
 ) -> AppResult<()> {
     let message = coach.time_to_go();
     print_console_message(&message, now, plan);
