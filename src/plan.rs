@@ -40,16 +40,9 @@ impl Plan {
             let remaining_time = departure_time.time_span_from(&time_cursor);
 
             // Generate notification for the remaining time
-            let notification = if time_cursor == departure_time {
-                Notification {
-                    time: departure_time,
-                    message: coach.time_to_go(),
-                }
-            } else {
-                Notification {
-                    time: time_cursor,
-                    message: coach.remaining_time_message(&remaining_time),
-                }
+            let notification = Notification {
+                time: time_cursor,
+                message: coach.remaining_time_message(&remaining_time),
             };
             notifications.push(notification);
 
@@ -79,17 +72,10 @@ mod tests {
         fn remaining_time_message(&self, remaining_time: &TimeSpan) -> String {
             format!("remaining: {:?}", remaining_time)
         }
-
-        fn time_to_go(&self) -> String {
-            "time to go!".to_owned()
-        }
     }
 
     fn notification_go(rendezvous_time: Timestamp) -> Notification {
-        Notification {
-            time: rendezvous_time,
-            message: TestCoach.time_to_go(),
-        }
+        notification_from(rendezvous_time, TimeSpan::ZERO)
     }
 
     fn notification_from(rendezvous_time: Timestamp, time_span: TimeSpan) -> Notification {

@@ -61,7 +61,7 @@ fn report_message<S: Speaker>(
     plan: &Plan,
     speaker: &mut S,
 ) -> AppResult<()> {
-    print!("------------------------------------------------");
+    println!("------------------------------------------------");
     println!("Ora: {}", now);
     println!("Partenza: {}", plan.departure_time());
     println!("📨 {}", message.bright_red());

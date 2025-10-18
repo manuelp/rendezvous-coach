@@ -2,13 +2,17 @@ use crate::time::TimeSpan;
 
 pub trait Coach {
     fn remaining_time_message(&self, remaining_time: &TimeSpan) -> String;
-    fn time_to_go(&self) -> String;
 }
 
 pub struct DefaultItCoach;
 
 impl DefaultItCoach {
-    fn remaining_time_component(&self, component: u64, singular: &str, plural: &str) -> Option<String> {
+    fn remaining_time_component(
+        &self,
+        component: u64,
+        singular: &str,
+        plural: &str,
+    ) -> Option<String> {
         match component {
             1 => Some(format!("{component} {singular}")),
             n if n > 1 => Some(format!("{component} {plural}")),
@@ -19,33 +23,33 @@ impl DefaultItCoach {
 
 impl Coach for DefaultItCoach {
     fn remaining_time_message(&self, remaining_time: &TimeSpan) -> String {
-        let seconds = remaining_time.seconds();
-        let minutes = remaining_time.minutes();
-        let hours = remaining_time.hours();
-        let components = vec![
-            self.remaining_time_component(hours, "ora", "ore"),
-            self.remaining_time_component(minutes, "minuto", "minuti"),
-            self.remaining_time_component(seconds, "secondo", "secondi"),
-        ];
-        let components: Vec<_> = components.iter().flat_map(|c| c).collect();
-        let prefix = if seconds + minutes + hours == 1 {
-            "Manca"
+        if remaining_time == &TimeSpan::ZERO {
+            "Ora di partire!".to_owned()
         } else {
-            "Mancano"
-        };
-        match components.len() {
-            3 => format!(
-                "{prefix} {}, {} e {}",
-                components[0], components[1], components[2]
-            ),
-            2 => format!("{prefix} {} e {}", components[0], components[1]),
-            1 => format!("{prefix} {}", components[0]),
-            _ => unreachable!(),
+            let seconds = remaining_time.seconds();
+            let minutes = remaining_time.minutes();
+            let hours = remaining_time.hours();
+            let components = vec![
+                self.remaining_time_component(hours, "ora", "ore"),
+                self.remaining_time_component(minutes, "minuto", "minuti"),
+                self.remaining_time_component(seconds, "secondo", "secondi"),
+            ];
+            let components: Vec<_> = components.iter().flat_map(|c| c).collect();
+            let prefix = if seconds + minutes + hours == 1 {
+                "Manca"
+            } else {
+                "Mancano"
+            };
+            match components.len() {
+                3 => format!(
+                    "{prefix} {}, {} e {}",
+                    components[0], components[1], components[2]
+                ),
+                2 => format!("{prefix} {} e {}", components[0], components[1]),
+                1 => format!("{prefix} {}", components[0]),
+                _ => unreachable!(),
+            }
         }
-    }
-
-    fn time_to_go(&self) -> String {
-        "Ora di partire!".to_owned()
     }
 }
 
@@ -56,6 +60,11 @@ mod tests {
     fn assert_message(remaining_time: TimeSpan, expected_message: &str) {
         let message = DefaultItCoach.remaining_time_message(&remaining_time);
         assert_eq!(expected_message, message);
+    }
+
+    #[test]
+    fn remaining_time_message_should_format_message_it_0s() {
+        assert_message(TimeSpan::ZERO, "Ora di partire!");
     }
 
     #[test]
