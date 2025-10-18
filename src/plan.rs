@@ -13,8 +13,8 @@ pub type PlanResult<T> = Result<T, Report<PlanError>>;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Notification {
-    time: Timestamp,
-    message: String,
+    pub time: Timestamp,
+    pub message: String,
 }
 
 #[derive(Debug)]
@@ -28,7 +28,7 @@ impl Plan {
         self.rendezvous_time - self.trip_duration
     }
 
-    pub fn notifications<C: Coach>(&self, coach: C) -> PlanResult<Vec<Notification>> {
+    pub fn notifications<C: Coach>(&self, coach: &C) -> PlanResult<Vec<Notification>> {
         let now = Timestamp::now().change_context(PlanError)?;
         let departure_time = self.departure_time();
 
@@ -42,7 +42,7 @@ impl Plan {
             // Generate notification for the remaining time
             let notification = if time_cursor == departure_time {
                 Notification {
-                    time: time_cursor,
+                    time: departure_time,
                     message: coach.time_to_go(),
                 }
             } else {
@@ -55,7 +55,7 @@ impl Plan {
 
             // Go back for the next (backward in time) notification to generate accoding to the
             // remaining time (relative to the cursor).
-            let next_span = if remaining_time < TimeSpan::of_minutes(5) {
+            let cursor_back_span = if remaining_time < TimeSpan::of_minutes(5) {
                 TimeSpan::of_minutes(1)
             } else if remaining_time < TimeSpan::of_minutes(30) {
                 TimeSpan::of_minutes(5)
@@ -64,9 +64,8 @@ impl Plan {
             } else {
                 TimeSpan::of_minutes(15)
             };
-            time_cursor = time_cursor - next_span;
+            time_cursor = time_cursor - cursor_back_span;
         }
-        notifications.reverse();
         Ok(notifications)
     }
 }
@@ -122,7 +121,7 @@ mod tests {
             trip_duration: TimeSpan::ZERO,
         };
 
-        let notifications = plan.notifications(TestCoach).unwrap();
+        let notifications = plan.notifications(&TestCoach).unwrap();
 
         let expected: Vec<Notification> = vec![];
         assert_eq!(expected, notifications);
@@ -136,7 +135,7 @@ mod tests {
             trip_duration: TimeSpan::ZERO,
         };
 
-        let notifications = plan.notifications(TestCoach).unwrap();
+        let notifications = plan.notifications(&TestCoach).unwrap();
 
         let expected: Vec<Notification> = vec![notification_go(rendezvous_time)];
         assert_eq!(expected, notifications);
@@ -151,15 +150,15 @@ mod tests {
             trip_duration: TimeSpan::ZERO,
         };
 
-        let notifications = plan.notifications(TestCoach).unwrap();
+        let notifications = plan.notifications(&TestCoach).unwrap();
 
         let expected: Vec<Notification> = vec![
-            notification_from(rendezvous_time, TimeSpan::of_minutes(5)),
-            notification_from(rendezvous_time, TimeSpan::of_minutes(4)),
-            notification_from(rendezvous_time, TimeSpan::of_minutes(3)),
-            notification_from(rendezvous_time, TimeSpan::of_minutes(2)),
-            notification_from(rendezvous_time, TimeSpan::of_minutes(1)),
             notification_go(rendezvous_time),
+            notification_from(rendezvous_time, TimeSpan::of_minutes(1)),
+            notification_from(rendezvous_time, TimeSpan::of_minutes(2)),
+            notification_from(rendezvous_time, TimeSpan::of_minutes(3)),
+            notification_from(rendezvous_time, TimeSpan::of_minutes(4)),
+            notification_from(rendezvous_time, TimeSpan::of_minutes(5)),
         ];
         assert_eq!(expected, notifications);
     }
@@ -173,18 +172,18 @@ mod tests {
             trip_duration: TimeSpan::ZERO,
         };
 
-        let notifications = plan.notifications(TestCoach).unwrap();
+        let notifications = plan.notifications(&TestCoach).unwrap();
         let filtered: Vec<_> = notifications
             .into_iter()
             .filter(|n| n.time < (rendezvous_time - TimeSpan::of_minutes(5)))
             .collect();
 
         let expected: Vec<Notification> = vec![
-            notification_from(rendezvous_time, TimeSpan::of_minutes(30)),
-            notification_from(rendezvous_time, TimeSpan::of_minutes(25)),
-            notification_from(rendezvous_time, TimeSpan::of_minutes(20)),
-            notification_from(rendezvous_time, TimeSpan::of_minutes(15)),
             notification_from(rendezvous_time, TimeSpan::of_minutes(10)),
+            notification_from(rendezvous_time, TimeSpan::of_minutes(15)),
+            notification_from(rendezvous_time, TimeSpan::of_minutes(20)),
+            notification_from(rendezvous_time, TimeSpan::of_minutes(25)),
+            notification_from(rendezvous_time, TimeSpan::of_minutes(30)),
         ];
         assert_eq!(expected, filtered);
     }
@@ -198,16 +197,16 @@ mod tests {
             trip_duration: TimeSpan::ZERO,
         };
 
-        let notifications = plan.notifications(TestCoach).unwrap();
+        let notifications = plan.notifications(&TestCoach).unwrap();
         let filtered: Vec<_> = notifications
             .into_iter()
             .filter(|n| n.time < (rendezvous_time - TimeSpan::of_minutes(30)))
             .collect();
 
         let expected: Vec<Notification> = vec![
-            notification_from(rendezvous_time, TimeSpan::of_minutes(60)),
-            notification_from(rendezvous_time, TimeSpan::of_minutes(50)),
             notification_from(rendezvous_time, TimeSpan::of_minutes(40)),
+            notification_from(rendezvous_time, TimeSpan::of_minutes(50)),
+            notification_from(rendezvous_time, TimeSpan::of_minutes(60)),
         ];
         assert_eq!(expected, filtered);
     }
@@ -221,21 +220,21 @@ mod tests {
             trip_duration: TimeSpan::ZERO,
         };
 
-        let notifications = plan.notifications(TestCoach).unwrap();
+        let notifications = plan.notifications(&TestCoach).unwrap();
         let filtered: Vec<_> = notifications
             .into_iter()
             .filter(|n| n.time < (rendezvous_time - TimeSpan::of_hours(1)))
             .collect();
 
         let expected: Vec<Notification> = vec![
-            notification_from(rendezvous_time, TimeSpan::new(3, 0, 0)),
-            notification_from(rendezvous_time, TimeSpan::new(2, 45, 0)),
-            notification_from(rendezvous_time, TimeSpan::new(2, 30, 0)),
-            notification_from(rendezvous_time, TimeSpan::new(2, 15, 0)),
-            notification_from(rendezvous_time, TimeSpan::new(2, 0, 0)),
-            notification_from(rendezvous_time, TimeSpan::new(1, 45, 0)),
-            notification_from(rendezvous_time, TimeSpan::new(1, 30, 0)),
             notification_from(rendezvous_time, TimeSpan::new(1, 15, 0)),
+            notification_from(rendezvous_time, TimeSpan::new(1, 30, 0)),
+            notification_from(rendezvous_time, TimeSpan::new(1, 45, 0)),
+            notification_from(rendezvous_time, TimeSpan::new(2, 0, 0)),
+            notification_from(rendezvous_time, TimeSpan::new(2, 15, 0)),
+            notification_from(rendezvous_time, TimeSpan::new(2, 30, 0)),
+            notification_from(rendezvous_time, TimeSpan::new(2, 45, 0)),
+            notification_from(rendezvous_time, TimeSpan::new(3, 0, 0)),
         ];
         assert_eq!(expected, filtered);
     }
