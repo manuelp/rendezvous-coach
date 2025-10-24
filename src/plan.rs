@@ -1,4 +1,4 @@
-use error_stack::{Report, ResultExt};
+use error_stack::Report;
 
 use crate::{
     feature::coach::Coach,
@@ -17,6 +17,15 @@ pub struct Notification {
     pub message: String,
 }
 
+impl Clone for Notification {
+    fn clone(&self) -> Self {
+        Self {
+            time: self.time.clone(),
+            message: self.message.clone(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Plan {
     pub rendezvous_time: Timestamp,
@@ -28,15 +37,18 @@ impl Plan {
         self.rendezvous_time - self.trip_duration
     }
 
-    pub fn notifications<C: Coach>(&self, coach: &C) -> PlanResult<Vec<Notification>> {
-        let now = Timestamp::now().change_context(PlanError)?;
+    pub fn notifications<C: Coach>(
+        &self,
+        now: &Timestamp,
+        coach: &C,
+    ) -> PlanResult<Vec<Notification>> {
         let departure_time = self.departure_time();
 
         // Starting from departure time, go in reverse and plan the notifications to be emitted
         // up to now, following the frequency rules.
         let mut time_cursor = departure_time;
         let mut notifications: Vec<Notification> = vec![];
-        while time_cursor >= now {
+        while &time_cursor >= now {
             let remaining_time = departure_time.time_span_from(&time_cursor);
 
             // Generate notification for the remaining time
@@ -107,7 +119,7 @@ mod tests {
             trip_duration: TimeSpan::ZERO,
         };
 
-        let notifications = plan.notifications(&TestCoach).unwrap();
+        let notifications = plan.notifications(&now, &TestCoach).unwrap();
 
         let expected: Vec<Notification> = vec![];
         assert_eq!(expected, notifications);
@@ -121,7 +133,7 @@ mod tests {
             trip_duration: TimeSpan::ZERO,
         };
 
-        let notifications = plan.notifications(&TestCoach).unwrap();
+        let notifications = plan.notifications(&rendezvous_time, &TestCoach).unwrap();
 
         let expected: Vec<Notification> = vec![notification_go(rendezvous_time)];
         assert_eq!(expected, notifications);
@@ -136,7 +148,7 @@ mod tests {
             trip_duration: TimeSpan::ZERO,
         };
 
-        let notifications = plan.notifications(&TestCoach).unwrap();
+        let notifications = plan.notifications(&now, &TestCoach).unwrap();
 
         let expected: Vec<Notification> = vec![
             notification_go(rendezvous_time),
@@ -158,7 +170,7 @@ mod tests {
             trip_duration: TimeSpan::ZERO,
         };
 
-        let notifications = plan.notifications(&TestCoach).unwrap();
+        let notifications = plan.notifications(&now, &TestCoach).unwrap();
         let filtered: Vec<_> = notifications
             .into_iter()
             .filter(|n| n.time < (rendezvous_time - TimeSpan::of_minutes(5)))
@@ -183,7 +195,7 @@ mod tests {
             trip_duration: TimeSpan::ZERO,
         };
 
-        let notifications = plan.notifications(&TestCoach).unwrap();
+        let notifications = plan.notifications(&now, &TestCoach).unwrap();
         let filtered: Vec<_> = notifications
             .into_iter()
             .filter(|n| n.time < (rendezvous_time - TimeSpan::of_minutes(30)))
@@ -206,7 +218,7 @@ mod tests {
             trip_duration: TimeSpan::ZERO,
         };
 
-        let notifications = plan.notifications(&TestCoach).unwrap();
+        let notifications = plan.notifications(&now, &TestCoach).unwrap();
         let filtered: Vec<_> = notifications
             .into_iter()
             .filter(|n| n.time < (rendezvous_time - TimeSpan::of_hours(1)))

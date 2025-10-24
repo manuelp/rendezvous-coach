@@ -96,6 +96,10 @@ impl TimeSpan {
     pub fn hours(&self) -> u64 {
         self.0 / 3600
     }
+
+    pub fn total_secs(&self) -> u64 {
+        self.0
+    }
 }
 
 // ---------------------- Time
@@ -337,6 +341,13 @@ mod tests {
         let converted = std::time::Duration::from(time_span);
 
         assert_eq!(std::time::Duration::from_secs(5 * 60), converted);
+    }
+
+    #[test]
+    fn time_span_total_secs() {
+        let time_span = TimeSpan::of_minutes(5) + TimeSpan::of_seconds(12);
+
+        assert_eq!(5 * 60 + 12, time_span.total_secs());
     }
 
     // ---- Timestamp
