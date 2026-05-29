@@ -30,6 +30,9 @@ struct Cli {
     /// Trip duration
     #[arg(short, long, value_name = "HH:MM")]
     trip: String,
+    /// TTS model directory (default: auto-downloaded to ~/.local/share/rendezvous-coach/models/)
+    #[arg(long, value_name = "DIR")]
+    model_path: Option<std::path::PathBuf>,
 }
 
 #[derive(Debug)]
@@ -242,7 +245,7 @@ fn main() -> AppResult<()> {
     };
 
     let coach = DefaultItCoach;
-    let mut speaker = TTSSpeaker::new().change_context(AppError)?;
+    let mut speaker = TTSSpeaker::new(cli.model_path.as_deref()).change_context(AppError)?;
 
     let mut app = AppState::new(&plan, coach, 10)?;
 
